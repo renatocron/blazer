@@ -17,6 +17,7 @@ package b2
 import (
 	"context"
 	"io"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -750,6 +751,9 @@ func withBackoff(ctx context.Context, ri beRootInterface, f func() error) error 
 	backoff := 500 * time.Millisecond
 	for {
 		err := f()
+		if err != nil {
+			log.Printf("withBackoff failed (%s)", err)
+		}
 		if !ri.transient(err) {
 			return err
 		}

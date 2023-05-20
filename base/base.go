@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -155,6 +156,8 @@ func mkErr(resp *http.Response) error {
 	var retryAfter int
 	retry := resp.Header.Get("Retry-After")
 	if retry != "" {
+		log.Printf("got header with Retry-After (%s)\n", retry)
+
 		r, err := strconv.ParseInt(retry, 10, 64)
 		if err != nil {
 			r = 0
@@ -219,9 +222,11 @@ func logResponse(resp *http.Response, reply []byte) {
 	if reply != nil {
 		safe := string(authRegexp.ReplaceAll(reply, []byte(`"authorizationToken": "[redacted]"`)))
 		blog.V(2).Infof("<< %s (%s) %s {%s} (%s)", method, id, resp.Status, hstr, safe)
+		log.Printf("<< %s (%s) %s {%s} (%s)", method, id, resp.Status, hstr, safe)
 		return
 	}
 	blog.V(2).Infof("<< %s (%s) %s {%s} (no reply)", method, id, resp.Status, hstr)
+	log.Printf("<< %s (%s) %s {%s} (no reply)", method, id, resp.Status, hstr)
 }
 
 func millitime(t int64) time.Time {
@@ -700,8 +705,11 @@ func (b *Bucket) GetUploadURL(ctx context.Context) (*URL, error) {
 		"Authorization": b.b2.authToken,
 	}
 	if err := b.b2.opts.makeRequest(ctx, "b2_get_upload_url", "POST", b.b2.apiURI+b2types.V1api+"b2_get_upload_url", b2req, b2resp, headers, nil); err != nil {
+		log.Printf("b2_get_upload_url errored (%s)\n", err)
 		return nil, err
 	}
+	log.Printf("b2_get_upload_url (%s)\n", b2resp.URI)
+
 	return &URL{
 		uri:    b2resp.URI,
 		token:  b2resp.Token,
@@ -882,8 +890,11 @@ func (l *LargeFile) GetUploadPartURL(ctx context.Context) (*FileChunk, error) {
 		"Authorization": l.b2.authToken,
 	}
 	if err := l.b2.opts.makeRequest(ctx, "b2_get_upload_part_url", "POST", l.b2.apiURI+b2types.V1api+"b2_get_upload_part_url", b2req, b2resp, headers, nil); err != nil {
+		log.Printf("(id %s) b2_get_upload_part_url errored (%s)\n", b2req.ID, err)
 		return nil, err
 	}
+	log.Printf("(id %s) b2_get_upload_part_url (%s)\n", b2req.ID, b2resp.URL)
+
 	return &FileChunk{
 		url:   b2resp.URL,
 		token: b2resp.Token,
